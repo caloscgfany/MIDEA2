@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Midea WH Live Command Center</title>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --panel-bg: #1e293b;
+            --border-color: #334155;
+            --text-accent: #38bdf8;
+            --alert-red: #991b1b;
+            --card-bg: #0f172a;
+        }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background: var(--bg-main); 
+            color: #fff; 
+            margin: 0; 
+            padding: 10px; 
+            box-sizing: border-box; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: var(--col-left, 60%) var(--col-right, 40%);
+            grid-template-rows: var(--row-top, 52vh) var(--row-bottom, 48vh);
+            gap: 10px;
+            height: calc(100vh - 20px);
+        }
+
+        .bottom-row-grid {
+            grid-column: 1 / span 2;
+            display: grid;
+            grid-template-columns: var(--bottom-col-1, 1fr) var(--bottom-col-2, 1fr) var(--bottom-col-3, 1fr);
+            gap: 10px;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-header {
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: var(--text-accent);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-container { 
+            overflow-y: auto; 
+            flex: 1; 
+        }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 0.75rem; 
+        }
+        
+        th, td { 
+            border: 1px solid var(--border-color); 
+            padding: 3px 4px; 
+            text-align: center; 
+        }
+        
+        th { 
+            background: #0f172a; 
+            color: var(--text-accent); 
+            position: sticky; 
+            top: 0; 
+            z-index: 2;
+        }
+        
+        .door-bold { font-weight: bold; color: #fff; }
+
+        /* Tarjetas de Dock Status */
+        .dock-grid-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 6px;
+            overflow-y: auto;
+            flex: 1;
+            padding: 4px;
+        }
+
+        .dock-card {
+            background: var(--card-bg);
+            border: 2px solid #334155;
+            border-radius: 6px;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 0.75rem;
+        }
+
+        .dock-card.active-dock {
+            border-color: #dc2626;
+            background: #1a0505;
+        }
+
+        .dock-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            color: var(--text-accent);
+            border-bottom: 1px solid #334155;
+            padding-bottom: 2px;
+            margin-bottom: 4px;
+        }
+
+        .dock-card.active-dock .dock-card-header {
+            color: #f87171;
+        }
+
+        .dock-card-body {
+            line-height: 1.25;
+            color: #e2e8f0;
+        }
+
+        .ti-hi-badge {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 4px;
+            margin-top: 4px;
+            padding: 2px 0;
+            font-size: 0.68rem;
+        }
+
+        .ti-hi-badge span {
+            flex: 1;
+            text-align: center;
+        }
+
+        .ti-hi-badge span:first-child {
+            border-right: 1px solid #334155;
+        }
+
+        .dock-card-footer {
+            margin-top: 4px;
+            font-size: 0.7rem;
+            background: #1e293b;
+            padding: 2px 4px;
+            border-radius: 3px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .slideshow-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+        .slideshow-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .slide-controls {
+            position: absolute;
+            bottom: 4px;
+            background: rgba(0,0,0,0.7);
+            padding: 2px 8px;
+            border-radius: 10px;
+            display: flex;
+            gap: 8px;
+            font-size: 0.75rem;
+        }
+
+        .forecast-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 6px; 
+            flex: 1; 
+            overflow-y: auto; 
+        }
+
+        .kpi-container {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .kpi-badge {
+            background: #0284c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: #fff;
+        }
+
+        /* Panel de Control Estilizado */
+        #config-toggle {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+        #config-toggle:hover { transform: scale(1.05); }
+
+        #config-panel {
+            display: none;
+            position: fixed;
+            bottom: 60px;
+            right: 15px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 16px;
+            border-radius: 12px;
+            z-index: 9999;
+            width: 300px;
+            max-height: 82vh;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+        }
+        
+        .config-section {
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #334155;
+        }
+        .config-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        
+        .config-section h5 {
+            margin: 0 0 6px 0;
+            color: #38bdf8;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        #config-panel label { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; color: #cbd5e1; }
+        #config-panel input[type="number"], #config-panel select { width: 90px; padding: 3px 6px; background: #0f172a; color: #fff; border: 1px solid #334155; border-radius: 4px; text-align: center; }
+        #config-panel input[type="color"] { width: 45px; height: 26px; border: none; background: none; cursor: pointer; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<button id="config-toggle" onclick="toggleConfig()">⚙️ Layout Settings</button>
+
+<div id="config-panel">
+    <div class="config-section">
+        <h5>📐 Distribución y Tamaños</h5>
+        <label>Top Height (vh): <input type="number" id="cfg-h-top" value="52" onchange="updateLayout()"></label>
+        <label>Bottom Height (vh): <input type="number" id="cfg-h-bottom" value="48" onchange="updateLayout()"></label>
+        <label>Top-Left Width (%): <input type="number" id="cfg-w-left" value="60" onchange="updateLayout()"></label>
+    </div>
+
+    <div class="config-section">
+        <h5>📊 Proporción Inferior (3 Columnas)</h5>
+        <label style="display:block; margin-bottom:4px;">Distribución:</label>
+        <select id="cfg-bottom-layout" onchange="updateLayout()" style="width:100%;">
+            <option value="1fr 1fr 1fr">Equivalente (33% / 33% / 33%)</option>
+            <option value="1.5fr 1fr 1fr">Presentación Grande</option>
+            <option value="1fr 1.5fr 1fr">Cargas en Dock Grande</option>
+            <option value="1fr 1fr 1.5fr">Lista Vacíos Grande</option>
+        </select>
+    </div>
+
+    <div class="config-section">
+        <h5>🎨 Apariencia y Colores</h5>
+        <label>Fondo Paneles: <input type="color" id="cfg-bg-color" value="#1e293b" onchange="updateLayout()"></label>
+        <label>Fondo Tarjetas Dock: <input type="color" id="cfg-card-color" value="#0f172a" onchange="updateLayout()"></label>
+        <label>Color de Acentos: <input type="color" id="cfg-accent-color" value="#38bdf8" onchange="updateAccent()"></label>
+    </div>
+
+    <button onclick="toggleConfig()" style="margin-top:10px; width:100%; background:#dc2626; color:#fff; border:none; padding:6px; border-radius:6px; cursor:pointer; font-weight:bold;">Guardar y Cerrar</button>
+</div>
+
+<div class="dashboard-grid" id="main-grid">
+    <!-- 1. TOP LEFT: DOCK STATUS CARDS -->
+    <div class="panel custom-panel">
+        <div class="panel-header custom-header">
+            <span>DOCK STATUS & PRIORITY LIST</span>
+            <div class="kpi-container">
+                <span class="kpi-badge" id="kpi-this-week">This week: --</span>
+                <span class="kpi-badge" id="kpi-next-week">Next week: --</span>
+                <span class="kpi-badge" id="kpi-unloaded-today">Unloaded Today: --</span>
+            </div>
+        </div>
+        <div class="dock-grid-view" id="priority-table-box">
+            <p>Loading Dock Status...</p>
+        </div>
+    </div>
+
+    <!-- 2. TOP RIGHT: FORECAST SCHEDULE -->
+    <div class="panel custom-panel">
+        <div class="panel-header custom-header">FORECAST SCHEDULE</div>
+        <div class="forecast-grid">
+            <div class="table-container">
+                <div style="font-weight:bold; color:var(--text-accent); text-align:center; margin-bottom:4px; font-size:0.8rem;" id="title-today">TODAY</div>
+                <div id="forecast-today-box"><p>Loading today...</p></div>
+            </div>
+            <div class="table-container">
+                <div style="font-weight:bold; color:var(--text-accent); text-align:center; margin-bottom:4px; font-size:0.8rem;" id="title-tomorrow">TOMORROW</div>
+                <div id="forecast-tomorrow-box"><p>Loading tomorrow...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILA INFERIOR: 3 SECCIONES -->
+    <div class="bottom-row-grid" id="bottom-grid">
+        <!-- 3. BOTTOM LEFT: PRESENTATION -->
+        <div class="panel custom-panel">
+            <div class="panel-header custom-header">
+                <span>PRESENTATION</span>
+                <input type="file" id="ppt-uploader" multiple accept="image/*" style="font-size: 0.65rem;" title="Sube las imágenes de tus diapositivas (JPG/PNG)">
+            </div>
+            <div class="slideshow-box" id="slide-box">
+                <p id="slide-empty-text" style="font-size:0.75rem; text-align:center; padding:10px;">Upload slide images (JPG/PNG).</p>
+                <img id="active-slide" style="display:none;" src="" alt="Slide">
+                <div class="slide-controls" id="slide-controls" style="display:none;">
+                    <span id="slide-counter">1 / 1</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. BOTTOM CENTER: LOADS IN DOCK -->
+        <div class="panel custom-panel">
+            <div class="panel-header custom-header" id="header-loads-dock">LOADS IN DOCK (STAGE200)</div>
+            <div class="table-container" id="loads-dock-table-box">
+                <p>Loading Loads in Dock...</p>
+            </div>
+        </div>
+
+        <!-- 5. BOTTOM RIGHT: EMPTY LIST -->
+        <div class="panel custom-panel">
+            <div class="panel-header custom-header" id="header-empty-list">EMPTY LIST</div>
+            <div class="table-container" id="empty-table-box">
+                <p>Loading Empty List...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const priorityCsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQxioOk9k98NTzITHI8pu32fzOVRdnvtlBtz93G2rwhlOOHtQP1bNLAaJ2j4DgPm6dzVRtnFtmLX2pB/pub?gid=514820968&single=true&output=csv";
+    const emptyCsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQxioOk9k98NTzITHI8pu32fzOVRdnvtlBtz93G2rwhlOOHtQP1bNLAaJ2j4DgPm6dzVRtnFtmLX2pB/pub?gid=1042434119&single=true&output=csv";
+    const loadsInDockCsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQxioOk9k98NTzITHI8pu32fzOVRdnvtlBtz93G2rwhlOOHtQP1bNLAaJ2j4DgPm6dzVRtnFtmLX2pB/pub?gid=1057482301&single=true&output=csv";
+
+    function toggleConfig() {
+        let p = document.getElementById('config-panel');
+        p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function updateLayout() {
+        let wLeft = document.getElementById('cfg-w-left').value;
+        let wRight = 100 - wLeft;
+        let hTop = document.getElementById('cfg-h-top').value;
+        let hBottom = document.getElementById('cfg-h-bottom').value;
+        let bgColor = document.getElementById('cfg-bg-color').value;
+        let cardColor = document.getElementById('cfg-card-color').value;
+        let bottomLayout = document.getElementById('cfg-bottom-layout').value;
+
+        let root = document.documentElement;
+        root.style.setProperty('--col-left', wLeft + '%');
+        root.style.setProperty('--col-right', wRight + '%');
+        root.style.setProperty('--row-top', hTop + 'vh');
+        root.style.setProperty('--row-bottom', hBottom + 'vh');
+        root.style.setProperty('--bottom-col-1', bottomLayout.split(' ')[0]);
+        root.style.setProperty('--bottom-col-2', bottomLayout.split(' ')[1]);
+        root.style.setProperty('--bottom-col-3', bottomLayout.split(' ')[2]);
+        root.style.setProperty('--card-bg', cardColor);
+
+        document.querySelectorAll('.custom-panel').forEach(panel => {
+            panel.style.background = bgColor;
+        });
+        document.querySelectorAll('.dock-card').forEach(card => {
+            if(!card.classList.contains('active-dock')) {
+                card.style.background = cardColor;
+            }
+        });
+    }
+
+    function updateAccent() {
+        let accentColor = document.getElementById('cfg-accent-color').value;
+        document.documentElement.style.setProperty('--text-accent', accentColor);
+        document.querySelectorAll('.custom-header').forEach(header => {
+            header.style.color = accentColor;
+        });
+    }
+
+    function parseCSV(text) {
+        let lines = text.split('\n');
+        return lines.map(line => {
+            let values = [];
+            let insideQuote = false;
+            let val = '';
+            for (let char of line) {
+                if (char === '"') {
+                    insideQuote = !insideQuote;
+                } else if (char === ',' && !insideQuote) {
+                    values.push(val.trim());
+                    val = '';
+                } else {
+                    val += char;
+                }
+            }
+            values.push(val.trim());
+            return values;
+        });
+    }
+
+    function loadPriorityData() {
+        fetch(priorityCsvUrl)
+            .then(res => res.text())
+            .then(csvText => {
+                const rows = parseCSV(csvText);
+
+                // Extracción robusta de KPIs buscando en las primeras 5 filas
+                let thisVal = "--";
+                let nextVal = "--";
+                let unloadedVal = "--";
+
+                for (let i = 0; i < Math.min(rows.length, 6); i++) {
+                    let r = rows[i];
+                    for (let j = 0; j < r.length; j++) {
+                        let cell = (r[j] || "").toLowerCase();
+                        if (cell.includes("this week") || j === 2 && !isNaN(r[2]) && r[2] !== "") {
+                            if (r[j+1] && !isNaN(r[j+1])) thisVal = r[j+1];
+                        }
+                        if (cell.includes("next week") || j === 5 && !isNaN(r[5]) && r[5] !== "") {
+                            if (r[j+1] && !isNaN(r[j+1])) nextVal = r[j+1];
+                        }
+                    }
+                }
+
+                // Respaldo directo por posiciones exactas de la hoja
+                if (rows[3]) {
+                    if (rows[3][2] && !isNaN(rows[3][2])) thisVal = rows[3][2];
+                    if (rows[3][5] && !isNaN(rows[3][5])) nextVal = rows[3][5];
+                    if (rows[3][10] && !isNaN(rows[3][10])) unloadedVal = rows[3][10];
+                }
+                if (rows[2]) {
+                    if (rows[2][2] && !isNaN(rows[2][2])) thisVal = rows[2][2];
+                    if (rows[2][5] && !isNaN(rows[2][5])) nextVal = rows[2][5];
+                    if (rows[2][10] && !isNaN(rows[2][10])) unloadedVal = rows[2][10];
+                }
+
+                document.getElementById('kpi-this-week').innerText = `This week: ${thisVal}`;
+                document.getElementById('kpi-next-week').innerText = `Next week: ${nextVal}`;
+                document.getElementById('kpi-unloaded-today').innerText = `Unloaded Today: ${unloadedVal}`;
+
+                let rawCards = [];
+                let today = new Date();
+                today.setHours(0,0,0,0);
+
+                rows.forEach((row, i) => {
+                    if (i >= 7 && row[3] && row[3] !== 'Container' && row[3] !== 'PRIORITY LIST') {
+                        let detLfdStr = row[2] || ''; 
+                        let container = row[3] || ''; 
+                        let model = row[4] || '';     
+                        let qty = row[5] || '';       
+                        let ti = row[6] || '-';       
+                        let hi = row[7] || '-';       
+                        let rawDoor = row[8] || '';   
+                        let priority = row[9] || '';  
+                        let days = parseInt(row[10]) || 0; 
+
+                        if (container.length > 3) {
+                            let displayDoor = rawDoor;
+                            if (rawDoor.includes('R-Dock-')) {
+                                displayDoor = rawDoor.replace('R-Dock-', 'S-');
+                            }
+
+                            let isNearLfd = false;
+                            if (detLfdStr.includes('/')) {
+                                let lfdDate = new Date(detLfdStr);
+                                let diffDays = Math.ceil((lfdDate - today) / (1000 * 60 * 60 * 24));
+                                if (diffDays <= 3) {
+                                    isNearLfd = true;
+                                }
+                            }
+
+                            let sortOrder = 3;
+                            let doorNum = 999;
+                            if (rawDoor.includes('R-Dock-')) {
+                                sortOrder = 1;
+                                doorNum = parseInt(rawDoor.replace('R-Dock-', '')) || 99;
+                            } else if (rawDoor.toUpperCase().trim() === 'YARD') {
+                                sortOrder = 2;
+                            } else if (rawDoor.toUpperCase().includes('YARD2')) {
+                                sortOrder = 4;
+                            }
+
+                            rawCards.push({
+                                displayDoor, sortOrder, doorNum, rawDoor,
+                                container, model, qty, ti, hi, priority, days, detLfdStr, isNearLfd
+                            });
+                        }
+                    }
+                });
+
+                rawCards.sort((a, b) => {
+                    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+                    if (a.sortOrder === 1 && b.sortOrder === 1) return a.doorNum - b.doorNum;
+                    return 0;
+                });
+
+                let cardsHtml = '';
+                let currentCardBg = document.getElementById('cfg-card-color') ? document.getElementById('cfg-card-color').value : '#0f172a';
+
+                rawCards.forEach(card => {
+                    let isActive = card.isNearLfd ? 'active-dock' : '';
+                    let daysAlertStyle = card.days >= 3 ? 'color:#f87171; font-weight:bold;' : 'color:#cbd5e1;';
+                    let bgStyle = (isActive && card.isNearLfd) ? '' : `background:${currentCardBg};`;
+
+                    cardsHtml += `
+                        <div class="dock-card ${isActive}" style="${bgStyle}">
+                            <div class="dock-card-header">
+                                <span>${card.displayDoor}</span>
+                                <span style="font-size:0.65rem; color:#94a3b8;">${card.priority}</span>
+                            </div>
+                            <div class="dock-card-body">
+                                <div style="font-weight:bold; font-size:0.75rem; color:var(--text-accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${card.container}">${card.container}</div>
+                                <div style="font-size:0.68rem; color:#cbd5e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${card.model}">${card.model}</div>
+                                <div style="font-size:0.68rem; margin-top:2px;">Qty: <b>${card.qty}</b></div>
+                                <div style="font-size:0.65rem; color:var(--text-accent); margin-top:1px;">LFD: <b>${card.detLfdStr}</b></div>
+                                
+                                <div class="ti-hi-badge">
+                                    <span>TI: <b>${card.ti}</b></span>
+                                    <span>HI: <b>${card.hi}</b></span>
+                                </div>
+                            </div>
+                            <div class="dock-card-footer" style="${daysAlertStyle}">
+                                Yard Days: ${card.days}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('priority-table-box').innerHTML = cardsHtml;
+                renderForecast(rows);
+            })
+            .catch(err => console.error("Error priority list:", err));
+    }
+
+    function renderForecast(rows) {
+        let blocks = [];
+        let currentBlock = null;
+
+        for (let i = 0; i < rows.length; i++) {
+            let row = rows[i];
+            if (!row || row.length < 10) continue;
+
+            for (let c = 10; c < row.length; c++) {
+                let val = (row[c] || '').trim();
+
+                if (val.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+                    let totalVal = '';
+                    for (let k = c + 1; k < row.length; k++) {
+                        if (row[k] && row[k].trim() !== '' && !isNaN(row[k].trim())) {
+                            totalVal = row[k].trim();
+                            break;
+                        }
+                    }
+
+                    currentBlock = {
+                        dateStr: val,
+                        total: totalVal,
+                        colIndex: c,
+                        items: []
+                    };
+                    blocks.push(currentBlock);
+                    break;
+                } else if (currentBlock && c === currentBlock.colIndex) {
+                    let container = row[c] || '';
+                    let model = row[c + 1] || '';
+                    let qty = row[c + 2] || '';
+
+                    if (container && container.length > 3 && container !== 'Container' && !container.includes('Forecast') && !container.includes('Weight')) {
+                        currentBlock.items.push({ container, model, qty });
+                    }
+                }
+            }
+        }
+
+        let todayBlock = blocks[0] || null;
+        let tomorrowBlock = blocks[1] || null;
+
+        if (todayBlock) {
+            document.getElementById('title-today').innerText = `TODAY (${todayBlock.dateStr}) ${todayBlock.total ? '— Total: ' + todayBlock.total : ''}`;
+            let html = '<table><thead><tr><th>Container</th><th>Model</th><th>Qty</th></tr></thead><tbody>';
+            if (todayBlock.items.length > 0) {
+                todayBlock.items.forEach(item => {
+                    html += `<tr><td><b>${item.container}</b></td><td>${item.model}</td><td>${item.qty}</td></tr>`;
+                });
+            } else {
+                html += '<tr><td colspan="3">No schedule</td></tr>';
+            }
+            html += '</tbody></table>';
+            document.getElementById('forecast-today-box').innerHTML = html;
+        } else {
+            document.getElementById('forecast-today-box').innerHTML = '<table><thead><tr><th>Container</th><th>Model</th><th>Qty</th></tr></thead><tbody><tr><td colspan="3">No schedule</td></tr></tbody></table>';
+        }
+
+        if (tomorrowBlock) {
+            document.getElementById('title-tomorrow').innerText = `TOMORROW (${tomorrowBlock.dateStr}) ${tomorrowBlock.total ? '— Total: ' + tomorrowBlock.total : ''}`;
+            let html = '<table><thead><tr><th>Container</th><th>Model</th><th>Qty</th></tr></thead><tbody>';
+            if (tomorrowBlock.items.length > 0) {
+                tomorrowBlock.items.forEach(item => {
+                    html += `<tr><td><b>${item.container}</b></td><td>${item.model}</td><td>${item.qty}</td></tr>`;
+                });
+            } else {
+                html += '<tr><td colspan="3">No schedule</td></tr>';
+            }
+            html += '</tbody></table>';
+            document.getElementById('forecast-tomorrow-box').innerHTML = html;
+        } else {
+            document.getElementById('forecast-tomorrow-box').innerHTML = '<table><thead><tr><th>Container</th><th>Model</th><th>Qty</th></tr></thead><tbody><tr><td colspan="3">No schedule</td></tr></tbody></table>';
+        }
+    }
+
+    function loadLoadsInDockData() {
+        fetch(loadsInDockCsvUrl)
+            .then(res => res.text())
+            .then(csvText => {
+                const rows = parseCSV(csvText);
+                let tableHtml = '<table><thead><tr><th>Container #</th><th>SKU</th><th>On Hand Qty</th><th>Location</th><th>Unload Date</th><th>Days in Dock</th></tr></thead><tbody>';
+
+                let count = 0;
+                rows.forEach((row, i) => {
+                    if (i > 0) {
+                        let rawSku = row[2] || '';
+                        let location = row[4] || '';
+                        let qty = row[5] || '';
+                        let rawContainer = row[8] || '';
+                        let unloadDate = row[45] || ''; 
+                        let daysInDock = row[46] || ''; 
+
+                        if (location.toUpperCase().trim() === 'STAGE200') {
+                            count++;
+                            let cleanContainer = rawContainer.split('-')[0].trim();
+                            let cleanSku = rawSku.split('@')[0].trim();
+
+                            tableHtml += `<tr>
+                                <td><b>${cleanContainer}</b></td>
+                                <td>${cleanSku}</td>
+                                <td>${qty}</td>
+                                <td><b style="color:var(--text-accent);">${location}</b></td>
+                                <td>${unloadDate}</td>
+                                <td>${daysInDock}</td>
+                            </tr>`;
+                        }
+                    }
+                });
+
+                tableHtml += '</tbody></table>';
+                document.getElementById('header-loads-dock').innerText = `LOADS IN DOCK (STAGE200) — Total: ${count}`;
+
+                if (count === 0) {
+                    tableHtml = "<p style='color:#cbd5e1; font-size:0.8rem; text-align:center; padding:15px;'>No stage200 loads currently in dock.</p>";
+                }
+                document.getElementById('loads-dock-table-box').innerHTML = tableHtml;
+            })
+            .catch(err => console.error("Error Loads in Dock:", err));
+    }
+
+    function loadEmptyListData() {
+        fetch(emptyCsvUrl)
+            .then(res => res.text())
+            .then(csvText => {
+                const rows = parseCSV(csvText);
+                let tableHtml = '<table><thead><tr><th>Container</th><th>Item Code</th><th>Expected Qty</th><th>DET. LFD</th><th>Unload Date</th><th>Door / Yard</th></tr></thead><tbody>';
+
+                let count = 0;
+                rows.forEach((row, i) => {
+                    if (i >= 2 && row.length >= 7) {
+                        let container = row[1] || '';
+                        let itemCode = row[2] || '';
+                        let qty = row[3] || '';
+                        let detLfd = row[4] || '';
+                        let unloadDate = row[5] || '';
+                        let door = row[6] || '';
+
+                        let cleanContainer = container.trim();
+                        if (cleanContainer && cleanContainer.toUpperCase() !== 'CONTAINER' && !cleanContainer.toUpperCase().includes('EMPTIES') && cleanContainer.length > 3) {
+                            count++;
+                            tableHtml += `<tr>
+                                <td><b>${cleanContainer}</b></td>
+                                <td>${itemCode}</td>
+                                <td>${qty}</td>
+                                <td>${detLfd}</td>
+                                <td>${unloadDate}</td>
+                                <td class="door-bold">${door}</td>
+                            </tr>`;
+                        }
+                    }
+                });
+                tableHtml += '</tbody></table>';
+                document.getElementById('header-empty-list').innerText = `EMPTY LIST — Total: ${count}`;
+                document.getElementById('empty-table-box').innerHTML = tableHtml;
+            })
+            .catch(err => console.error("Error empty list:", err));
+    }
+
+    // Carrusel automático de imágenes para Presentation
+    let slideImages = [];
+    let currentSlide = 0;
+
+    document.getElementById('ppt-uploader').addEventListener('change', function(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            slideImages = Array.from(files).map(file => URL.createObjectURL(file));
+            currentSlide = 0;
+            showSlide();
+            document.getElementById('slide-empty-text').style.display = 'none';
+            document.getElementById('active-slide').style.display = 'block';
+            document.getElementById('slide-controls').style.display = 'flex';
+        }
+    });
+
+    function showSlide() {
+        if (slideImages.length === 0) return;
+        document.getElementById('active-slide').src = slideImages[currentSlide];
+        document.getElementById('slide-counter').innerText = `${currentSlide + 1} / ${slideImages.length}`;
+    }
+
+    setInterval(() => {
+        if (slideImages.length > 1) {
+            currentSlide = (currentSlide + 1) % slideImages.length;
+            showSlide();
+        }
+    }, 8000);
+
+    loadPriorityData();
+    loadEmptyListData();
+    loadLoadsInDockData();
+
+    setInterval(loadPriorityData, 30000);
+    setInterval(loadEmptyListData, 30000);
+    setInterval(loadLoadsInDockData, 30000);
+</script>
+</body>
+</html>
